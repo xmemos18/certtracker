@@ -22,6 +22,7 @@ export default function CertTracker() {
   const [currentUser, setCurrentUser] = useState(null);
   const [showAuth, setShowAuth] = useState('login'); // 'login', 'register', or null
   const [authForm, setAuthForm] = useState({ email: '', password: '', name: '', role: 'admin' });
+  const [demoMode, setDemoMode] = useState(false);
 
   const [showAddEmployee, setShowAddEmployee] = useState(false);
   const [newEmployee, setNewEmployee] = useState({ name: '', role: '', email: '' });
@@ -202,10 +203,29 @@ export default function CertTracker() {
     setShowAuth('login');
   };
 
+  // Demo mode functions
+  const enterDemoMode = () => {
+    const demoUser = {
+      id: 'demo',
+      name: 'Demo Admin',
+      email: 'demo@certtracker.com',
+      role: 'admin'
+    };
+    setCurrentUser(demoUser);
+    setDemoMode(true);
+    setShowAuth(null);
+  };
+
+  const exitDemoMode = () => {
+    setCurrentUser(null);
+    setDemoMode(false);
+    setShowAuth('login');
+  };
+
   // Role-based permissions
-  const canManageEmployees = () => currentUser.role === 'admin' || currentUser.role === 'manager';
-  const canManageCertifications = () => currentUser.role === 'admin' || currentUser.role === 'manager';
-  const canDeleteData = () => currentUser.role === 'admin';
+  const canManageEmployees = () => demoMode || currentUser.role === 'admin' || currentUser.role === 'manager';
+  const canManageCertifications = () => demoMode || currentUser.role === 'admin' || currentUser.role === 'manager';
+  const canDeleteData = () => demoMode || currentUser.role === 'admin';
 
   const counts = getExpiringCount();
 
@@ -344,6 +364,29 @@ export default function CertTracker() {
                   Sign up
                 </button>
               </p>
+              
+              {/* Demo Mode Button */}
+              <div style={{ textAlign: 'center', marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #e5e7eb' }}>
+                <button
+                  onClick={enterDemoMode}
+                  style={{
+                    background: '#f59e0b',
+                    color: 'white',
+                    padding: '12px 24px',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    width: '100%'
+                  }}
+                >
+                  🚀 Try Demo Mode (No Login Required)
+                </button>
+                <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
+                  Test all features instantly • Full admin access • No registration needed
+                </p>
+              </div>
             </div>
           ) : (
             <div>
@@ -438,6 +481,29 @@ export default function CertTracker() {
                   Sign in
                 </button>
               </p>
+              
+              {/* Demo Mode Button */}
+              <div style={{ textAlign: 'center', marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #e5e7eb' }}>
+                <button
+                  onClick={enterDemoMode}
+                  style={{
+                    background: '#f59e0b',
+                    color: 'white',
+                    padding: '12px 24px',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    width: '100%'
+                  }}
+                >
+                  🚀 Try Demo Mode (No Login Required)
+                </button>
+                <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
+                  Test all features instantly • Full admin access • No registration needed
+                </p>
+              </div>
             </div>
           )}
         </div>
@@ -485,15 +551,16 @@ export default function CertTracker() {
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#374151' }}>
                   {currentUser.name}
+                  {demoMode && <span style={{ marginLeft: '8px', fontSize: '12px', background: '#f59e0b', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>DEMO</span>}
                 </div>
                 <div style={{ fontSize: '12px', color: '#6b7280', textTransform: 'capitalize' }}>
                   {currentUser.role}
                 </div>
               </div>
               <button
-                onClick={handleLogout}
+                onClick={demoMode ? exitDemoMode : handleLogout}
                 style={{
-                  background: '#ef4444',
+                  background: demoMode ? '#f59e0b' : '#ef4444',
                   color: 'white',
                   padding: '8px 16px',
                   border: 'none',
@@ -502,7 +569,7 @@ export default function CertTracker() {
                   fontSize: '14px'
                 }}
               >
-                Logout
+                {demoMode ? 'Exit Demo' : 'Logout'}
               </button>
             </div>
           </div>
