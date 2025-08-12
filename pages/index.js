@@ -912,20 +912,45 @@ export default function CertTracker() {
         }}>
           <div style={{ background: 'white', padding: '30px', borderRadius: '10px', width: '400px' }}>
             <h3>Add New Employee</h3>
-            <input
-              type="text"
-              placeholder="Full Name"
-              value={newEmployee.name}
-              onChange={(e) => setNewEmployee({...newEmployee, name: e.target.value})}
-              style={{ width: '100%', padding: '10px', margin: '10px 0', border: '1px solid #ddd', borderRadius: '6px' }}
-            />
-            <input
-              type="text"
-              placeholder="Role (RN, CNA, etc.)"
-              value={newEmployee.role}
-              onChange={(e) => setNewEmployee({...newEmployee, role: e.target.value})}
-              style={{ width: '100%', padding: '10px', margin: '10px 0', border: '1px solid #ddd', borderRadius: '6px' }}
-            />
+            
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#374151' }}>
+                Full Name *
+              </label>
+              <input
+                type="text"
+                placeholder="e.g., Sarah Johnson"
+                value={newEmployee.name}
+                onChange={(e) => setNewEmployee({...newEmployee, name: e.target.value})}
+                style={{ width: '100%', padding: '12px', border: '2px solid #e5e7eb', borderRadius: '6px', fontSize: '14px' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#374151' }}>
+                Job Role *
+              </label>
+              <input
+                type="text"
+                placeholder="e.g., RN, CNA, Medical Assistant"
+                value={newEmployee.role}
+                onChange={(e) => setNewEmployee({...newEmployee, role: e.target.value})}
+                style={{ width: '100%', padding: '12px', border: '2px solid #e5e7eb', borderRadius: '6px', fontSize: '14px' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#374151' }}>
+                Email Address
+              </label>
+              <input
+                type="email"
+                placeholder="e.g., sarah.johnson@clinic.com"
+                value={newEmployee.email}
+                onChange={(e) => setNewEmployee({...newEmployee, email: e.target.value})}
+                style={{ width: '100%', padding: '12px', border: '2px solid #e5e7eb', borderRadius: '6px', fontSize: '14px' }}
+              />
+            </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
               <button
                 onClick={addEmployee}
@@ -959,39 +984,72 @@ export default function CertTracker() {
         }}>
           <div style={{ background: 'white', padding: '30px', borderRadius: '10px', width: '400px' }}>
             <h3>Add New Certification</h3>
-            <input
-              type="text"
-              placeholder="Certification Name (e.g., CPR Certification)"
-              value={newCert.name}
-              onChange={(e) => setNewCert({...newCert, name: e.target.value})}
-              style={{ width: '100%', padding: '10px', margin: '10px 0', border: '1px solid #ddd', borderRadius: '6px' }}
-            />
-            <input
-              type="text"
-              placeholder="License Number (e.g., RN123456, CPR789012)"
-              value={newCert.licenseNumber}
-              onChange={(e) => handleLicenseNumberChange(e.target.value)}
-              style={{ width: '100%', padding: '10px', margin: '10px 0', border: '1px solid #ddd', borderRadius: '6px' }}
-            />
-            {newCert.licenseNumber && newCert.expiry && (
-              <div style={{ fontSize: '12px', color: '#10b981', marginBottom: '10px', padding: '8px', background: '#f0fdf4', borderRadius: '4px' }}>
-                ✅ Expiration date auto-populated based on license type
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#374151' }}>
+                Certification Name *
+              </label>
+              <input
+                type="text"
+                placeholder="e.g., CPR Certification, RN License"
+                value={newCert.name}
+                onChange={(e) => setNewCert({...newCert, name: e.target.value})}
+                style={{ width: '100%', padding: '12px', border: '2px solid #e5e7eb', borderRadius: '6px', fontSize: '14px' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#374151' }}>
+                License/Certificate Number
+              </label>
+              <input
+                type="text"
+                placeholder="e.g., RN123456, CPR789012, CNA456789"
+                value={newCert.licenseNumber}
+                onChange={(e) => handleLicenseNumberChange(e.target.value)}
+                style={{ width: '100%', padding: '12px', border: '2px solid #e5e7eb', borderRadius: '6px', fontSize: '14px' }}
+              />
+              <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                💡 Tip: Type license numbers like RN123456, CPR789012 to auto-fill expiry date
               </div>
-            )}
-            <input
-              type="date"
-              placeholder="Expiry Date"
-              value={newCert.expiry}
-              onChange={(e) => setNewCert({...newCert, expiry: e.target.value})}
-              style={{ width: '100%', padding: '10px', margin: '10px 0', border: '1px solid #ddd', borderRadius: '6px' }}
-            />
-            <input
-              type="text"
-              placeholder="Issuer (e.g., Red Cross, State Board)"
-              value={newCert.issuer}
-              onChange={(e) => setNewCert({...newCert, issuer: e.target.value})}
-              style={{ width: '100%', padding: '10px', margin: '10px 0', border: '1px solid #ddd', borderRadius: '6px' }}
-            />
+            </div>
+
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#374151' }}>
+                Expiration Date *
+              </label>
+              <input
+                type="date"
+                value={newCert.expiry}
+                onChange={(e) => setNewCert({...newCert, expiry: e.target.value})}
+                style={{ width: '100%', padding: '12px', border: '2px solid #e5e7eb', borderRadius: '6px', fontSize: '14px' }}
+              />
+              {newCert.licenseNumber && newCert.expiry && (
+                <div style={{ 
+                  fontSize: '13px', 
+                  color: '#10b981', 
+                  marginTop: '6px', 
+                  padding: '8px 12px', 
+                  background: '#f0fdf4', 
+                  borderRadius: '6px',
+                  border: '1px solid #bbf7d0'
+                }}>
+                  ✅ Expiration date automatically set to {newCert.expiry} based on license type ({newCert.licenseNumber.slice(0, 3).toUpperCase()})
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#374151' }}>
+                Issuing Organization
+              </label>
+              <input
+                type="text"
+                placeholder="e.g., American Red Cross, State Board of Nursing"
+                value={newCert.issuer}
+                onChange={(e) => setNewCert({...newCert, issuer: e.target.value})}
+                style={{ width: '100%', padding: '12px', border: '2px solid #e5e7eb', borderRadius: '6px', fontSize: '14px' }}
+              />
+            </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
               <button
                 onClick={addCertification}
@@ -1029,38 +1087,72 @@ export default function CertTracker() {
         }}>
           <div style={{ background: 'white', padding: '30px', borderRadius: '10px', width: '400px' }}>
             <h3>Edit Certification</h3>
-            <input
-              type="text"
-              placeholder="Certification Name"
-              value={editingCert.name}
-              onChange={(e) => setEditingCert({...editingCert, name: e.target.value})}
-              style={{ width: '100%', padding: '10px', margin: '10px 0', border: '1px solid #ddd', borderRadius: '6px' }}
-            />
-            <input
-              type="text"
-              placeholder="License Number (e.g., RN123456, CPR789012)"
-              value={editingCert.licenseNumber || ''}
-              onChange={(e) => handleLicenseNumberChange(e.target.value, true)}
-              style={{ width: '100%', padding: '10px', margin: '10px 0', border: '1px solid #ddd', borderRadius: '6px' }}
-            />
-            {editingCert.licenseNumber && editingCert.expiry && (
-              <div style={{ fontSize: '12px', color: '#10b981', marginBottom: '10px', padding: '8px', background: '#f0fdf4', borderRadius: '4px' }}>
-                ✅ Expiration date auto-populated based on license type
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#374151' }}>
+                Certification Name *
+              </label>
+              <input
+                type="text"
+                placeholder="e.g., CPR Certification, RN License"
+                value={editingCert.name}
+                onChange={(e) => setEditingCert({...editingCert, name: e.target.value})}
+                style={{ width: '100%', padding: '12px', border: '2px solid #e5e7eb', borderRadius: '6px', fontSize: '14px' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#374151' }}>
+                License/Certificate Number
+              </label>
+              <input
+                type="text"
+                placeholder="e.g., RN123456, CPR789012, CNA456789"
+                value={editingCert.licenseNumber || ''}
+                onChange={(e) => handleLicenseNumberChange(e.target.value, true)}
+                style={{ width: '100%', padding: '12px', border: '2px solid #e5e7eb', borderRadius: '6px', fontSize: '14px' }}
+              />
+              <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                💡 Tip: Type license numbers like RN123456, CPR789012 to auto-fill expiry date
               </div>
-            )}
-            <input
-              type="date"
-              value={editingCert.expiry}
-              onChange={(e) => setEditingCert({...editingCert, expiry: e.target.value})}
-              style={{ width: '100%', padding: '10px', margin: '10px 0', border: '1px solid #ddd', borderRadius: '6px' }}
-            />
-            <input
-              type="text"
-              placeholder="Issuer"
-              value={editingCert.issuer || ''}
-              onChange={(e) => setEditingCert({...editingCert, issuer: e.target.value})}
-              style={{ width: '100%', padding: '10px', margin: '10px 0', border: '1px solid #ddd', borderRadius: '6px' }}
-            />
+            </div>
+
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#374151' }}>
+                Expiration Date *
+              </label>
+              <input
+                type="date"
+                value={editingCert.expiry}
+                onChange={(e) => setEditingCert({...editingCert, expiry: e.target.value})}
+                style={{ width: '100%', padding: '12px', border: '2px solid #e5e7eb', borderRadius: '6px', fontSize: '14px' }}
+              />
+              {editingCert.licenseNumber && editingCert.expiry && (
+                <div style={{ 
+                  fontSize: '13px', 
+                  color: '#10b981', 
+                  marginTop: '6px', 
+                  padding: '8px 12px', 
+                  background: '#f0fdf4', 
+                  borderRadius: '6px',
+                  border: '1px solid #bbf7d0'
+                }}>
+                  ✅ Expiration date automatically set to {editingCert.expiry} based on license type ({editingCert.licenseNumber.slice(0, 3).toUpperCase()})
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#374151' }}>
+                Issuing Organization
+              </label>
+              <input
+                type="text"
+                placeholder="e.g., American Red Cross, State Board of Nursing"
+                value={editingCert.issuer || ''}
+                onChange={(e) => setEditingCert({...editingCert, issuer: e.target.value})}
+                style={{ width: '100%', padding: '12px', border: '2px solid #e5e7eb', borderRadius: '6px', fontSize: '14px' }}
+              />
+            </div>
             <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
               <button
                 onClick={editCertification}
