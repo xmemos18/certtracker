@@ -28,8 +28,9 @@ export default function CertTracker() {
   const [newEmployee, setNewEmployee] = useState({ name: '', role: '', email: '' });
   const [showAddCert, setShowAddCert] = useState(false);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(null);
-  const [newCert, setNewCert] = useState({ name: '', expiry: '', issuer: '' });
+  const [newCert, setNewCert] = useState({ name: '', expiry: '', issuer: '', licenseNumber: '' });
   const [editingCert, setEditingCert] = useState(null);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Load data from localStorage on component mount
   useEffect(() => {
@@ -70,6 +71,18 @@ export default function CertTracker() {
     }
   }, [employees, isLoaded]);
 
+  // Close notifications when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showNotifications && !event.target.closest('[data-notifications]')) {
+        setShowNotifications(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showNotifications]);
+
   const getDaysUntilExpiry = (date) => {
     const today = new Date();
     const expiry = new Date(date);
@@ -88,6 +101,79 @@ export default function CertTracker() {
       });
     });
     return { expired, critical };
+  };
+
+  const getExpiringCertifications = () => {
+    const expiring = [];
+    employees.forEach(emp => {
+      emp.certifications.forEach(cert => {
+        const days = getDaysUntilExpiry(cert.expiry);
+        if (days <= 30) {
+          expiring.push({
+            ...cert,
+            employeeName: emp.name,
+            employeeRole: emp.role,
+            days,
+            status: days < 0 ? 'expired' : 'critical'
+          });
+        }
+      });
+    });
+    return expiring.sort((a, b) => a.days - b.days);
+  };
+
+  // Auto-populate expiration date from license number
+  const handleLicenseNumberChange = (licenseNumber, isEditing = false) => {
+    // Simple pattern matching for common license formats
+    const licensePatterns = {
+      // RN License (format: RN123456) - typically expire every 2 years
+      'RN': () => {
+        const expiry = new Date();
+        expiry.setFullYear(expiry.getFullYear() + 2);
+        return expiry.toISOString().split('T')[0];
+      },
+      // CPR Certification (format: CPR123456) - typically expire every 2 years
+      'CPR': () => {
+        const expiry = new Date();
+        expiry.setFullYear(expiry.getFullYear() + 2);
+        return expiry.toISOString().split('T')[0];
+      },
+      // CNA License (format: CNA123456) - typically expire every 2 years
+      'CNA': () => {
+        const expiry = new Date();
+        expiry.setFullYear(expiry.getFullYear() + 2);
+        return expiry.toISOString().split('T')[0];
+      },
+      // BLS Certification (format: BLS123456) - typically expire every 2 years
+      'BLS': () => {
+        const expiry = new Date();
+        expiry.setFullYear(expiry.getFullYear() + 2);
+        return expiry.toISOString().split('T')[0];
+      },
+      // ACLS Certification (format: ACLS123456) - typically expire every 2 years
+      'ACLS': () => {
+        const expiry = new Date();
+        expiry.setFullYear(expiry.getFullYear() + 2);
+        return expiry.toISOString().split('T')[0];
+      }
+    };
+
+    const prefix = licenseNumber.slice(0, 3).toUpperCase();
+    if (licensePatterns[prefix]) {
+      const expiryDate = licensePatterns[prefix]();
+      
+      if (isEditing) {
+        setEditingCert(prev => ({ ...prev, licenseNumber, expiry: expiryDate }));
+      } else {
+        setNewCert(prev => ({ ...prev, licenseNumber, expiry: expiryDate }));
+      }
+    } else {
+      if (isEditing) {
+        setEditingCert(prev => ({ ...prev, licenseNumber }));
+      } else {
+        setNewCert(prev => ({ ...prev, licenseNumber }));
+      }
+    }
   };
 
   const addEmployee = () => {
@@ -115,7 +201,7 @@ export default function CertTracker() {
             }
           : emp
       ));
-      setNewCert({ name: '', expiry: '', issuer: '' });
+      setNewCert({ name: '', expiry: '', issuer: '', licenseNumber: '' });
       setShowAddCert(false);
       setSelectedEmployeeId(null);
     }
@@ -528,21 +614,94 @@ export default function CertTracker() {
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             {/* Notifications */}
-            <div style={{ position: 'relative' }}>
-              <BellIcon />
-              {(counts.expired + counts.critical) > 0 && (
-                <span style={{
+            <div style={{ position: 'relative' }} data-notifications>
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  position: 'relative'
+                }}
+              >
+                <BellIcon />
+                {(counts.expired + counts.critical) > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '-8px',
+                    right: '-8px',
+                    background: '#ef4444',
+                    color: 'white',
+                    borderRadius: '50%',
+                    padding: '2px 6px',
+                    fontSize: '12px'
+                  }}>
+                    {counts.expired + counts.critical}
+                  </span>
+                )}
+              </button>
+
+              {/* Notifications Dropdown */}
+              {showNotifications && (
+                <div style={{
                   position: 'absolute',
-                  top: '-8px',
-                  right: '-8px',
-                  background: '#ef4444',
-                  color: 'white',
-                  borderRadius: '50%',
-                  padding: '2px 6px',
-                  fontSize: '12px'
+                  top: '100%',
+                  right: 0,
+                  marginTop: '8px',
+                  background: 'white',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                  width: '320px',
+                  maxHeight: '400px',
+                  overflowY: 'auto',
+                  zIndex: 50
                 }}>
-                  {counts.expired + counts.critical}
-                </span>
+                  <div style={{ padding: '16px', borderBottom: '1px solid #e5e7eb' }}>
+                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold' }}>
+                      Certification Alerts
+                    </h3>
+                  </div>
+                  
+                  {getExpiringCertifications().length === 0 ? (
+                    <div style={{ padding: '20px', textAlign: 'center', color: '#6b7280' }}>
+                      <div style={{ marginBottom: '8px' }}>✅</div>
+                      <div>All certifications are up to date!</div>
+                    </div>
+                  ) : (
+                    <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                      {getExpiringCertifications().map((cert, index) => (
+                        <div key={index} style={{
+                          padding: '12px 16px',
+                          borderBottom: index < getExpiringCertifications().length - 1 ? '1px solid #f3f4f6' : 'none',
+                          background: cert.status === 'expired' ? '#fef2f2' : '#fef3c7'
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#374151' }}>
+                                {cert.name}
+                              </div>
+                              <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
+                                {cert.employeeName} ({cert.employeeRole})
+                              </div>
+                              <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
+                                Expires: {cert.expiry}
+                              </div>
+                            </div>
+                            <div style={{
+                              fontSize: '12px',
+                              fontWeight: 'bold',
+                              color: cert.status === 'expired' ? '#dc2626' : '#d97706',
+                              textAlign: 'right'
+                            }}>
+                              {cert.days < 0 ? `${Math.abs(cert.days)} days ago` : `${cert.days} days left`}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
             
@@ -808,6 +967,18 @@ export default function CertTracker() {
               style={{ width: '100%', padding: '10px', margin: '10px 0', border: '1px solid #ddd', borderRadius: '6px' }}
             />
             <input
+              type="text"
+              placeholder="License Number (e.g., RN123456, CPR789012)"
+              value={newCert.licenseNumber}
+              onChange={(e) => handleLicenseNumberChange(e.target.value)}
+              style={{ width: '100%', padding: '10px', margin: '10px 0', border: '1px solid #ddd', borderRadius: '6px' }}
+            />
+            {newCert.licenseNumber && newCert.expiry && (
+              <div style={{ fontSize: '12px', color: '#10b981', marginBottom: '10px', padding: '8px', background: '#f0fdf4', borderRadius: '4px' }}>
+                ✅ Expiration date auto-populated based on license type
+              </div>
+            )}
+            <input
               type="date"
               placeholder="Expiry Date"
               value={newCert.expiry}
@@ -832,7 +1003,7 @@ export default function CertTracker() {
                 onClick={() => {
                   setShowAddCert(false);
                   setSelectedEmployeeId(null);
-                  setNewCert({ name: '', expiry: '', issuer: '' });
+                  setNewCert({ name: '', expiry: '', issuer: '', licenseNumber: '' });
                 }}
                 style={{ flex: 1, background: '#e5e7eb', padding: '10px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
               >
@@ -865,6 +1036,18 @@ export default function CertTracker() {
               onChange={(e) => setEditingCert({...editingCert, name: e.target.value})}
               style={{ width: '100%', padding: '10px', margin: '10px 0', border: '1px solid #ddd', borderRadius: '6px' }}
             />
+            <input
+              type="text"
+              placeholder="License Number (e.g., RN123456, CPR789012)"
+              value={editingCert.licenseNumber || ''}
+              onChange={(e) => handleLicenseNumberChange(e.target.value, true)}
+              style={{ width: '100%', padding: '10px', margin: '10px 0', border: '1px solid #ddd', borderRadius: '6px' }}
+            />
+            {editingCert.licenseNumber && editingCert.expiry && (
+              <div style={{ fontSize: '12px', color: '#10b981', marginBottom: '10px', padding: '8px', background: '#f0fdf4', borderRadius: '4px' }}>
+                ✅ Expiration date auto-populated based on license type
+              </div>
+            )}
             <input
               type="date"
               value={editingCert.expiry}
