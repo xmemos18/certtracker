@@ -21,7 +21,7 @@ export default function CertTracker() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [showAuth, setShowAuth] = useState('login'); // 'login', 'register', or null
-  const [authForm, setAuthForm] = useState({ email: '', password: '', name: '', role: 'admin' });
+  const [authForm, setAuthForm] = useState({ email: '', password: '', name: '', role: 'employee', companyCode: '', managerCode: '' });
   const [demoMode, setDemoMode] = useState(false);
 
   const [showAddEmployee, setShowAddEmployee] = useState(false);
@@ -31,6 +31,13 @@ export default function CertTracker() {
   const [newCert, setNewCert] = useState({ name: '', initialDate: '', expiry: '', issuer: '', licenseNumber: '' });
   const [editingCert, setEditingCert] = useState(null);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [companies, setCompanies] = useState([]);
+  const [managerCodes, setManagerCodes] = useState([]);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [isCreatingCompany, setIsCreatingCompany] = useState(false);
+  const [newManagerCode, setNewManagerCode] = useState({ name: '', code: '' });
+  const [companyUsers, setCompanyUsers] = useState([]);
+  const [showUserManagement, setShowUserManagement] = useState(false);
 
   // Load data from localStorage on component mount
   useEffect(() => {
@@ -39,6 +46,17 @@ export default function CertTracker() {
     if (savedUser) {
       setCurrentUser(JSON.parse(savedUser));
       setShowAuth(null);
+    }
+
+    // Load companies and manager codes
+    const savedCompanies = localStorage.getItem('certtracker-companies');
+    if (savedCompanies) {
+      setCompanies(JSON.parse(savedCompanies));
+    }
+
+    const savedManagerCodes = localStorage.getItem('certtracker-manager-codes');
+    if (savedManagerCodes) {
+      setManagerCodes(JSON.parse(savedManagerCodes));
     }
 
     const savedEmployees = localStorage.getItem('certtracker-employees');
@@ -52,6 +70,9 @@ export default function CertTracker() {
           name: "Sarah Johnson",
           role: "RN",
           email: "sarah.j@clinic.com",
+          companyCode: "DEMO-CLINIC",
+          managerCode: "MGR-DEMO",
+          managerId: "demo-manager",
           certifications: [
             { id: 1, name: "CPR Certification", initialDate: "2023-09-15", expiry: "2025-09-15", issuer: "Red Cross", licenseNumber: "CPR123456" },
             { id: 2, name: "RN License", initialDate: "2023-08-30", expiry: "2025-08-30", issuer: "State Board", licenseNumber: "RN789012" }
@@ -83,6 +104,18 @@ export default function CertTracker() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showNotifications]);
 
+  // Load company-specific data when user changes
+  useEffect(() => {
+    if (currentUser && currentUser.role === 'admin') {
+      loadCompanyUsers();
+      
+      // Load company-specific manager codes
+      const allManagerCodes = JSON.parse(localStorage.getItem('certtracker-manager-codes') || '[]');
+      const companyManagerCodes = allManagerCodes.filter(m => m.companyCode === currentUser.companyCode);
+      setManagerCodes(companyManagerCodes);
+    }
+  }, [currentUser]);
+
   const getDaysUntilExpiry = (date) => {
     const today = new Date();
     const expiry = new Date(date);
@@ -90,10 +123,11 @@ export default function CertTracker() {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
-  const getExpiringCount = () => {
+  const getExpiringCount = (employeesToCheck = null) => {
     let expired = 0;
     let critical = 0;
-    employees.forEach(emp => {
+    const employeeList = employeesToCheck || getFilteredEmployees();
+    employeeList.forEach(emp => {
       emp.certifications.forEach(cert => {
         const days = getDaysUntilExpiry(cert.expiry);
         if (days < 0) expired++;
@@ -103,9 +137,10 @@ export default function CertTracker() {
     return { expired, critical };
   };
 
-  const getExpiringCertifications = () => {
+  const getExpiringCertifications = (employeesToCheck = null) => {
     const expiring = [];
-    employees.forEach(emp => {
+    const employeeList = employeesToCheck || getFilteredEmployees();
+    employeeList.forEach(emp => {
       emp.certifications.forEach(cert => {
         const days = getDaysUntilExpiry(cert.expiry);
         if (days <= 30) {
@@ -206,6 +241,65 @@ export default function CertTracker() {
       return;
     }
 
+    // Check if creating a new company
+    if (isCreatingCompany) {
+      if (!authForm.companyCode) {
+        alert('Please enter a company code');
+        return;
+      }
+
+      const companies = JSON.parse(localStorage.getItem('certtracker-companies') || '[]');
+      if (companies.find(c => c.code === authForm.companyCode)) {
+        alert('Company code already exists');
+        return;
+      }
+
+      // Create new company
+      const newCompany = {
+        id: Date.now(),
+        code: authForm.companyCode,
+        name: authForm.name + "'s Company",
+        createdBy: authForm.email,
+        createdAt: new Date().toISOString()
+      };
+
+      companies.push(newCompany);
+      localStorage.setItem('certtracker-companies', JSON.stringify(companies));
+    } else {
+      // Validate company and manager codes for existing company
+      if (!authForm.companyCode) {
+        alert('Please enter a company code');
+        return;
+      }
+
+      const companies = JSON.parse(localStorage.getItem('certtracker-companies') || '[]');
+      const company = companies.find(c => c.code === authForm.companyCode);
+      if (!company) {
+        alert('Invalid company code');
+        return;
+      }
+
+      if (authForm.role === 'manager' && !authForm.managerCode) {
+        alert('Please enter a manager code');
+        return;
+      }
+
+      if (authForm.role === 'employee' && !authForm.managerCode) {
+        alert('Please enter your manager code');
+        return;
+      }
+
+      // Validate manager code exists
+      if (authForm.managerCode) {
+        const managerCodes = JSON.parse(localStorage.getItem('certtracker-manager-codes') || '[]');
+        const managerCode = managerCodes.find(m => m.code === authForm.managerCode && m.companyCode === authForm.companyCode);
+        if (!managerCode) {
+          alert('Invalid manager code for this company');
+          return;
+        }
+      }
+    }
+
     const users = JSON.parse(localStorage.getItem('certtracker-users') || '[]');
     
     if (users.find(u => u.email === authForm.email)) {
@@ -218,7 +312,10 @@ export default function CertTracker() {
       email: authForm.email,
       password: authForm.password, // In production, this should be hashed
       name: authForm.name,
-      role: authForm.role
+      role: isCreatingCompany ? 'admin' : authForm.role,
+      companyCode: authForm.companyCode,
+      managerCode: authForm.managerCode || null,
+      createdAt: new Date().toISOString()
     };
 
     users.push(newUser);
@@ -227,7 +324,8 @@ export default function CertTracker() {
     setCurrentUser(newUser);
     localStorage.setItem('certtracker-user', JSON.stringify(newUser));
     setShowAuth(null);
-    setAuthForm({ email: '', password: '', name: '', role: 'admin' });
+    setAuthForm({ email: '', password: '', name: '', role: 'employee', companyCode: '', managerCode: '' });
+    setIsCreatingCompany(false);
   };
 
   const handleLogout = () => {
@@ -259,7 +357,90 @@ export default function CertTracker() {
   const canManageEmployees = () => demoMode || currentUser.role === 'admin' || currentUser.role === 'manager';
   const canManageCertifications = () => demoMode || currentUser.role === 'admin' || currentUser.role === 'manager';
   const canDeleteData = () => demoMode || currentUser.role === 'admin';
+  const isAdmin = () => demoMode || currentUser.role === 'admin';
 
+  // Filter employees based on user role and company
+  const getFilteredEmployees = () => {
+    if (demoMode) return employees;
+    
+    if (!currentUser) return [];
+
+    // Admin sees all employees in their company
+    if (currentUser.role === 'admin') {
+      return employees.filter(emp => emp.companyCode === currentUser.companyCode);
+    }
+
+    // Manager sees only employees assigned to their manager code
+    if (currentUser.role === 'manager') {
+      return employees.filter(emp => 
+        emp.companyCode === currentUser.companyCode && 
+        emp.managerCode === currentUser.managerCode
+      );
+    }
+
+    // Employee sees only themselves
+    if (currentUser.role === 'employee') {
+      return employees.filter(emp => emp.email === currentUser.email);
+    }
+
+    return [];
+  };
+
+  // Admin functions
+  const loadCompanyUsers = () => {
+    if (!currentUser || currentUser.role !== 'admin') return;
+    
+    const users = JSON.parse(localStorage.getItem('certtracker-users') || '[]');
+    const companyUsers = users.filter(user => user.companyCode === currentUser.companyCode);
+    setCompanyUsers(companyUsers);
+  };
+
+  const createManagerCode = () => {
+    if (!newManagerCode.name || !newManagerCode.code) {
+      alert('Please fill in both manager name and code');
+      return;
+    }
+
+    const existingCodes = JSON.parse(localStorage.getItem('certtracker-manager-codes') || '[]');
+    
+    if (existingCodes.find(m => m.code === newManagerCode.code && m.companyCode === currentUser.companyCode)) {
+      alert('Manager code already exists in your company');
+      return;
+    }
+
+    const newCode = {
+      id: Date.now(),
+      name: newManagerCode.name,
+      code: newManagerCode.code.toUpperCase(),
+      companyCode: currentUser.companyCode,
+      createdBy: currentUser.id,
+      createdAt: new Date().toISOString()
+    };
+
+    existingCodes.push(newCode);
+    localStorage.setItem('certtracker-manager-codes', JSON.stringify(existingCodes));
+    setManagerCodes(existingCodes.filter(m => m.companyCode === currentUser.companyCode));
+    setNewManagerCode({ name: '', code: '' });
+  };
+
+  const changeUserRole = (userId, newRole, newManagerCode = null) => {
+    const users = JSON.parse(localStorage.getItem('certtracker-users') || '[]');
+    const updatedUsers = users.map(user => {
+      if (user.id === userId) {
+        return {
+          ...user,
+          role: newRole,
+          managerCode: newManagerCode
+        };
+      }
+      return user;
+    });
+
+    localStorage.setItem('certtracker-users', JSON.stringify(updatedUsers));
+    loadCompanyUsers();
+  };
+
+  const filteredEmployees = getFilteredEmployees();
   const counts = getExpiringCount();
 
   // Show loading state until data is loaded
@@ -423,7 +604,10 @@ export default function CertTracker() {
             </div>
           ) : (
             <div>
-              <h2 style={{ textAlign: 'center', color: '#374151', marginBottom: '20px' }}>Create Account</h2>
+              <h2 style={{ textAlign: 'center', color: '#374151', marginBottom: '20px' }}>
+                {isCreatingCompany ? 'Create New Company' : 'Join Company'}
+              </h2>
+              
               <input
                 type="text"
                 placeholder="Full Name"
@@ -466,9 +650,12 @@ export default function CertTracker() {
                   fontSize: '16px'
                 }}
               />
-              <select
-                value={authForm.role}
-                onChange={(e) => setAuthForm({...authForm, role: e.target.value})}
+              
+              <input
+                type="text"
+                placeholder={isCreatingCompany ? "Company Code (e.g., CLINIC-2024-ABC)" : "Company Code"}
+                value={authForm.companyCode}
+                onChange={(e) => setAuthForm({...authForm, companyCode: e.target.value.toUpperCase()})}
                 style={{ 
                   width: '100%', 
                   padding: '12px', 
@@ -477,11 +664,42 @@ export default function CertTracker() {
                   borderRadius: '8px',
                   fontSize: '16px'
                 }}
-              >
-                <option value="admin">Administrator</option>
-                <option value="manager">Manager</option>
-                <option value="employee">Employee</option>
-              </select>
+              />
+
+              {!isCreatingCompany && (
+                <>
+                  <select
+                    value={authForm.role}
+                    onChange={(e) => setAuthForm({...authForm, role: e.target.value})}
+                    style={{ 
+                      width: '100%', 
+                      padding: '12px', 
+                      margin: '10px 0', 
+                      border: '2px solid #e5e7eb', 
+                      borderRadius: '8px',
+                      fontSize: '16px'
+                    }}
+                  >
+                    <option value="employee">Employee</option>
+                    <option value="manager">Manager</option>
+                  </select>
+
+                  <input
+                    type="text"
+                    placeholder="Manager Code (from your manager)"
+                    value={authForm.managerCode}
+                    onChange={(e) => setAuthForm({...authForm, managerCode: e.target.value.toUpperCase()})}
+                    style={{ 
+                      width: '100%', 
+                      padding: '12px', 
+                      margin: '10px 0', 
+                      border: '2px solid #e5e7eb', 
+                      borderRadius: '8px',
+                      fontSize: '16px'
+                    }}
+                  />
+                </>
+              )}
               <button
                 onClick={handleRegister}
                 style={{ 
@@ -497,8 +715,25 @@ export default function CertTracker() {
                   marginTop: '20px'
                 }}
               >
-                Create Account
+                {isCreatingCompany ? 'Create Company & Admin Account' : 'Join Company'}
               </button>
+              
+              <div style={{ textAlign: 'center', marginTop: '15px' }}>
+                <button
+                  onClick={() => setIsCreatingCompany(!isCreatingCompany)}
+                  style={{ 
+                    background: 'none', 
+                    border: 'none', 
+                    color: '#3b82f6', 
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    fontSize: '14px'
+                  }}
+                >
+                  {isCreatingCompany ? 'Join existing company instead' : 'Create new company instead'}
+                </button>
+              </div>
+
               <p style={{ textAlign: 'center', marginTop: '20px', color: '#6b7280' }}>
                 Already have an account?{' '}
                 <button
@@ -663,6 +898,24 @@ export default function CertTracker() {
                   {currentUser.role}
                 </div>
               </div>
+              
+              {isAdmin() && (
+                <button
+                  onClick={() => setShowAdminPanel(true)}
+                  style={{
+                    background: '#8b5cf6',
+                    color: 'white',
+                    padding: '8px 16px',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px'
+                  }}
+                >
+                  Admin Panel
+                </button>
+              )}
+              
               <button
                 onClick={demoMode ? exitDemoMode : handleLogout}
                 style={{
@@ -718,7 +971,7 @@ export default function CertTracker() {
           </div>
 
           {/* Employee List */}
-          {employees.map(emp => (
+          {getFilteredEmployees().map(emp => (
             <div key={emp.id} style={{ background: '#f9fafb', padding: '20px', borderRadius: '8px', marginBottom: '15px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                 <h3 style={{ margin: 0 }}>{emp.name} - {emp.role}</h3>
@@ -1107,6 +1360,217 @@ export default function CertTracker() {
                 Cancel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Panel Modal */}
+      {showAdminPanel && isAdmin() && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 100
+        }}>
+          <div style={{ 
+            background: 'white', 
+            padding: '30px', 
+            borderRadius: '12px', 
+            width: '90%', 
+            maxWidth: '800px',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+              <h2 style={{ margin: 0, color: '#374151' }}>Admin Panel - {currentUser.companyCode}</h2>
+              <button
+                onClick={() => setShowAdminPanel(false)}
+                style={{
+                  background: '#e5e7eb',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '8px 12px',
+                  cursor: 'pointer'
+                }}
+              >
+                ✕ Close
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', gap: '20px', marginBottom: '30px' }}>
+              <button
+                onClick={() => setShowUserManagement(false)}
+                style={{
+                  padding: '10px 20px',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  background: !showUserManagement ? '#8b5cf6' : '#e5e7eb',
+                  color: !showUserManagement ? 'white' : '#374151'
+                }}
+              >
+                Manager Codes
+              </button>
+              <button
+                onClick={() => setShowUserManagement(true)}
+                style={{
+                  padding: '10px 20px',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  background: showUserManagement ? '#8b5cf6' : '#e5e7eb',
+                  color: showUserManagement ? 'white' : '#374151'
+                }}
+              >
+                User Management
+              </button>
+            </div>
+
+            {!showUserManagement ? (
+              // Manager Codes Tab
+              <div>
+                <h3 style={{ color: '#374151', marginBottom: '20px' }}>Create Manager Code</h3>
+                <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
+                  <input
+                    type="text"
+                    placeholder="Manager Name"
+                    value={newManagerCode.name}
+                    onChange={(e) => setNewManagerCode({...newManagerCode, name: e.target.value})}
+                    style={{ 
+                      flex: 1, 
+                      padding: '12px', 
+                      border: '2px solid #e5e7eb', 
+                      borderRadius: '6px' 
+                    }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Manager Code (e.g., MGR-TEAM1)"
+                    value={newManagerCode.code}
+                    onChange={(e) => setNewManagerCode({...newManagerCode, code: e.target.value.toUpperCase()})}
+                    style={{ 
+                      flex: 1, 
+                      padding: '12px', 
+                      border: '2px solid #e5e7eb', 
+                      borderRadius: '6px' 
+                    }}
+                  />
+                  <button
+                    onClick={createManagerCode}
+                    style={{
+                      background: '#10b981',
+                      color: 'white',
+                      padding: '12px 20px',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Create Code
+                  </button>
+                </div>
+
+                <h3 style={{ color: '#374151', marginBottom: '15px' }}>Existing Manager Codes</h3>
+                {managerCodes.length === 0 ? (
+                  <p style={{ color: '#6b7280', fontStyle: 'italic' }}>No manager codes created yet</p>
+                ) : (
+                  <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+                    {managerCodes.map((code, index) => (
+                      <div key={code.id} style={{
+                        padding: '15px',
+                        borderBottom: index < managerCodes.length - 1 ? '1px solid #f3f4f6' : 'none',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <div>
+                          <div style={{ fontWeight: 'bold', color: '#374151' }}>{code.name}</div>
+                          <div style={{ fontSize: '14px', color: '#6b7280' }}>Code: {code.code}</div>
+                          <div style={{ fontSize: '12px', color: '#9ca3af' }}>
+                            Created: {new Date(code.createdAt).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              // User Management Tab
+              <div>
+                <h3 style={{ color: '#374151', marginBottom: '20px' }}>Company Users</h3>
+                {companyUsers.length === 0 ? (
+                  <p style={{ color: '#6b7280', fontStyle: 'italic' }}>No users found</p>
+                ) : (
+                  <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+                    {companyUsers.map((user, index) => (
+                      <div key={user.id} style={{
+                        padding: '15px',
+                        borderBottom: index < companyUsers.length - 1 ? '1px solid #f3f4f6' : 'none',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <div>
+                          <div style={{ fontWeight: 'bold', color: '#374151' }}>{user.name}</div>
+                          <div style={{ fontSize: '14px', color: '#6b7280' }}>{user.email}</div>
+                          <div style={{ fontSize: '12px', color: '#9ca3af' }}>
+                            Role: {user.role} | Manager Code: {user.managerCode || 'None'}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                          {user.role === 'employee' && (
+                            <button
+                              onClick={() => {
+                                const managerCode = prompt('Enter manager code for promotion:', '');
+                                if (managerCode && managerCodes.find(m => m.code === managerCode.toUpperCase())) {
+                                  changeUserRole(user.id, 'manager', managerCode.toUpperCase());
+                                } else if (managerCode) {
+                                  alert('Invalid manager code');
+                                }
+                              }}
+                              style={{
+                                background: '#3b82f6',
+                                color: 'white',
+                                padding: '6px 12px',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '12px'
+                              }}
+                            >
+                              Promote to Manager
+                            </button>
+                          )}
+                          {user.role === 'manager' && (
+                            <button
+                              onClick={() => changeUserRole(user.id, 'employee', null)}
+                              style={{
+                                background: '#f59e0b',
+                                color: 'white',
+                                padding: '6px 12px',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '12px'
+                              }}
+                            >
+                              Demote to Employee
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
